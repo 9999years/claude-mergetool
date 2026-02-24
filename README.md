@@ -1,6 +1,13 @@
 # claude-mergetool
 
-AI-powered merge conflict resolution using [Claude Code](https://docs.anthropic.com/en/docs/claude-code). When git or jj hits a merge conflict, claude-mergetool launches Claude to read the three versions of the file, resolve the conflict, and write the result — fully automatically.
+AI-powered merge conflict resolution using [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+When `git` or `jj` hits a merge conflict, `claude-mergetool` launches Claude to read the three versions of the file, resolve the conflict, and write the result — fully automatically.
+
+> [!WARNING]
+>
+> Note that `claude` is launched with `--permission-mode=acceptEdits` to the various conflicted files.
+> With `jj`, these are in a temporary directory, but with `git` I'm not sure.
+> There is, as always with AI tools that can touch files on your disk, some risk of unintended changes!
 
 ## Install
 
@@ -78,4 +85,6 @@ Options:
 
 ## How it works
 
-claude-mergetool runs `claude` in non-interactive mode (`--print`) with `--permission-mode=acceptEdits`, so tool calls (Read, Edit, Write) are auto-approved with no user interaction required. Claude's reasoning and tool calls are streamed to stderr as dimmed text so you can follow along. When Claude finishes, the merge continues automatically.
+`claude-mergetool` runs `claude` in non-interactive mode (`--print`) with `--permission-mode=acceptEdits`, so tool calls (Read, Edit, Write) are auto-approved with no user interaction required.
+Claude's reasoning and tool calls are streamed to stderr as dimmed text so you can follow along.
+When Claude finishes, the merge continues automatically.
