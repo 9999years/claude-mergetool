@@ -28,7 +28,7 @@ enum Commands {
 
 #[derive(clap::Args)]
 struct MergeArgs {
-    /// Git merge driver mode (writes result to <left> path)
+    /// Git merge driver mode (writes result to `<left>` path)
     #[arg(long)]
     git: bool,
 
