@@ -114,7 +114,7 @@ impl MergeArgs {
             self.output_path()?,
         ]
         .iter()
-        .filter_map(|p| p.parent())
+        .filter_map(|p| p.parent().filter(|p| *p != ""))
         .collect();
 
         let mut command = Command::new("claude");
