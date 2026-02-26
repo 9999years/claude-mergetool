@@ -31,7 +31,7 @@ enum Commands {
 struct MergeArgs {
     /// Git merge driver mode (writes result to `<left>` path)
     #[arg(long)]
-    git: bool,
+    git_merge_driver: bool,
 
     /// Base version (common ancestor)
     base: PathBuf,
@@ -65,10 +65,12 @@ struct MergeArgs {
 
 impl MergeArgs {
     fn output_path(&self) -> miette::Result<&Path> {
-        match (self.output.as_deref(), self.git) {
+        match (self.output.as_deref(), self.git_merge_driver) {
             (Some(path), _) => Ok(path),
             (None, true) => Ok(&self.left),
-            (None, false) => Err(miette::miette!("either --git or -o <path> is required")),
+            (None, false) => Err(miette::miette!(
+                "either --git-merge-driver or -o <path> is required"
+            )),
         }
     }
 
@@ -175,7 +177,7 @@ mod tests {
     #[test]
     fn command_git_mode() {
         let args = MergeArgs {
-            git: true,
+            git_merge_driver: true,
             base: PathBuf::from("/tmp/base.txt"),
             left: PathBuf::from("/tmp/left.txt"),
             right: PathBuf::from("/tmp/right.txt"),
@@ -204,7 +206,7 @@ mod tests {
     #[test]
     fn command_output_mode() {
         let args = MergeArgs {
-            git: false,
+            git_merge_driver: false,
             base: PathBuf::from("/tmp/base.txt"),
             left: PathBuf::from("/tmp/left.txt"),
             right: PathBuf::from("/tmp/right.txt"),
