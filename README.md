@@ -8,8 +8,13 @@
 <img src="https://repology.org/badge/vertical-allrepos/claude-mergetool.svg?header=" alt="Packaging status">
 </a>
 
-AI-powered merge conflict resolution using [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+Have you ever wished that resolving Git merge conflicts could cost you
+real-world dollars? Now it can!
+
+`claude-mergetool` implements AI-powered merge conflict resolution using [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 When `git` or `jj` hits a merge conflict, `claude-mergetool` launches Claude to read the three versions of the file, resolve the conflict, and write the result — fully automatically.
+
+It works surprisingly well, although I feel much more comfortable using it in `jj` where the conflicted files are written to a temporary directory (so the AI doesn't get free write access to my checkout) and I can easily run `jj diff` to inspect how the conflicts were resolved once it finishes.
 
 > [!WARNING]
 >
