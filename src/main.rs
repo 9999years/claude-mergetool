@@ -1,6 +1,7 @@
 use clap::Parser;
 use command_error::ChildExt;
 use command_error::CommandExt;
+use command_error::Utf8ProgramAndArgs;
 use miette::IntoDiagnostic;
 use std::collections::BTreeSet;
 use std::io::Write;
@@ -135,6 +136,8 @@ impl MergeArgs {
             command.arg("--add-dir").arg(*dir);
         }
 
+        tracing::debug!("Claude command: {}", Utf8ProgramAndArgs::from(&command));
+
         Ok(command)
     }
 
@@ -235,6 +238,12 @@ mod tests {
 
 fn main() -> miette::Result<()> {
     let cli = Cli::parse();
+
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .without_time()
+        .with_writer(std::io::stderr)
+        .init();
 
     match cli.command {
         Commands::Merge(args) => args.run()?,
