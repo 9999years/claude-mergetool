@@ -11,7 +11,7 @@ use std::process::{Command, Stdio};
 
 mod claude_json;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(
     name = "claude-mergetool",
     about = "AI-powered merge conflict resolution",
@@ -22,13 +22,13 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(clap::Subcommand)]
+#[derive(clap::Subcommand, Debug)]
 enum Commands {
     /// Resolve a merge conflict using Claude
     Merge(MergeArgs),
 }
 
-#[derive(clap::Args)]
+#[derive(clap::Args, Debug)]
 struct MergeArgs {
     /// Git merge driver mode (writes result to `<left>` path)
     #[arg(long)]
@@ -244,6 +244,8 @@ fn main() -> miette::Result<()> {
         .without_time()
         .with_writer(std::io::stderr)
         .init();
+
+    tracing::debug!("Parsed arguments:{cli:#?}");
 
     match cli.command {
         Commands::Merge(args) => args.run()?,
