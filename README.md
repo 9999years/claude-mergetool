@@ -1,5 +1,13 @@
 # claude-mergetool
 
+<a href="https://crates.io/crates/claude-mergetool">
+<img src="https://img.shields.io/crates/v/claude-mergetool" alt="Crates.io">
+</a>
+<br>
+<a href="https://repology.org/project/claude-mergetool/versions">
+<img src="https://repology.org/badge/vertical-allrepos/claude-mergetool.svg?header=" alt="Packaging status">
+</a>
+
 AI-powered merge conflict resolution using [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 When `git` or `jj` hits a merge conflict, `claude-mergetool` launches Claude to read the three versions of the file, resolve the conflict, and write the result — fully automatically.
 
