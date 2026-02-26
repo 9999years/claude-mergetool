@@ -9,3 +9,6 @@ command-error = { version = "0.8.0", features = ["miette", "tracing"] }
 miette = { version = "7.6.0", features = ["fancy"] }
 serde_json = "1"
 tracing = "0.1.44"
+
+[dev-dependencies]
+expect-test = "1.5.1"
