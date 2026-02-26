@@ -20,7 +20,7 @@ When `git` or `jj` hits a merge conflict, `claude-mergetool` launches Claude to 
 ## Install
 
 ```sh
-cargo install --path .
+cargo install claude-mergetool
 ```
 
 ### Prerequisites
