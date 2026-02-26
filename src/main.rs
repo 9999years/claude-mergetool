@@ -71,7 +71,7 @@ impl MergeArgs {
         }
     }
 
-    fn run(&self) -> miette::Result<()> {
+    fn command(&self) -> miette::Result<Command> {
         let system_prompt = format!(
             "You are resolving a merge conflict in `{}`. \
              Your working directory is the root of the repository, so you can browse and edit \
@@ -113,9 +113,10 @@ impl MergeArgs {
         .filter_map(|p| p.parent())
         .collect();
 
-        let mut cmd = Command::new("claude");
+        let mut command = Command::new("claude");
 
-        cmd.arg("--print")
+        command
+            .arg("--print")
             .arg("--verbose")
             .arg("--output-format=stream-json")
             .arg("--permission-mode=acceptEdits")
@@ -128,14 +129,19 @@ impl MergeArgs {
         for dir in &temp_dirs {
             let dir_display = dir.display();
             tracing::debug!("Granting access to {dir_display}");
-            cmd.arg("--add-dir").arg(*dir);
+            command.arg("--add-dir").arg(*dir);
             for tool in ["Read", "Edit", "Write"] {
-                cmd.arg("--allowedTools")
+                command
+                    .arg("--allowedTools")
                     .arg(format!("{tool}(//{dir_display}/**)"));
             }
         }
 
-        let mut child = cmd.spawn_checked()?;
+        Ok(command)
+    }
+
+    fn run(&self) -> miette::Result<()> {
+        let mut child = self.command()?.spawn_checked()?;
         let stdout = child
             .child_mut()
             .stdout
@@ -161,6 +167,71 @@ impl MergeArgs {
         child.wait_checked()?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use command_error::Utf8ProgramAndArgs;
+    use expect_test::expect;
+
+    #[test]
+    fn command_git_mode() {
+        let args = MergeArgs {
+            git: true,
+            base: PathBuf::from("/tmp/base.txt"),
+            left: PathBuf::from("/tmp/left.txt"),
+            right: PathBuf::from("/tmp/right.txt"),
+            output: None,
+            ancestor_label: None,
+            left_label: "ours".to_string(),
+            right_label: "theirs".to_string(),
+            filepath: "src/lib.rs".to_string(),
+            marker_size: None,
+        };
+        let command = args.command().unwrap();
+        let displayed: Utf8ProgramAndArgs = (&command).into();
+        expect![[r#"
+            claude --print --verbose '--output-format=stream-json' '--permission-mode=acceptEdits' --append-system-prompt 'You are resolving a merge conflict in `src/lib.rs`. Your working directory is the root of the repository, so you can browse and edit other files if needed (e.g. if code moved between files).
+
+            Three versions of the file are provided as temporary files: the base (common ancestor), left (ours), and right (theirs). Read all three, understand what each side changed relative to the base, and write a resolved version to the output path. If changes are compatible, merge them cleanly. If they genuinely conflict, use your best judgment and explain your reasoning.' 'Resolve the merge conflict in `src/lib.rs`.
+
+            Read these three versions of the file:
+            - Base (common ancestor): /tmp/base.txt
+            - Left (ours): /tmp/left.txt
+            - Right (theirs): /tmp/right.txt
+
+            Write the resolved file to: /tmp/left.txt' --add-dir /tmp --allowedTools 'Read(///tmp/**)' --allowedTools 'Edit(///tmp/**)' --allowedTools 'Write(///tmp/**)'"#]].assert_eq(&displayed.to_string());
+    }
+
+    #[test]
+    fn command_output_mode() {
+        let args = MergeArgs {
+            git: false,
+            base: PathBuf::from("/tmp/base.txt"),
+            left: PathBuf::from("/tmp/left.txt"),
+            right: PathBuf::from("/tmp/right.txt"),
+            output: Some(PathBuf::from("/tmp/output.txt")),
+            ancestor_label: Some("ancestor".to_string()),
+            left_label: "current".to_string(),
+            right_label: "incoming".to_string(),
+            filepath: "README.md".to_string(),
+            marker_size: Some(7),
+        };
+        let command = args.command().unwrap();
+        let displayed: Utf8ProgramAndArgs = (&command).into();
+        expect![[r#"
+            claude --print --verbose '--output-format=stream-json' '--permission-mode=acceptEdits' --append-system-prompt 'You are resolving a merge conflict in `README.md`. Your working directory is the root of the repository, so you can browse and edit other files if needed (e.g. if code moved between files).
+
+            Three versions of the file are provided as temporary files: the base (common ancestor), left (current), and right (incoming). Read all three, understand what each side changed relative to the base, and write a resolved version to the output path. If changes are compatible, merge them cleanly. If they genuinely conflict, use your best judgment and explain your reasoning.' 'Resolve the merge conflict in `README.md`.
+
+            Read these three versions of the file:
+            - Base (common ancestor): /tmp/base.txt
+            - Left (current): /tmp/left.txt
+            - Right (incoming): /tmp/right.txt
+
+            Write the resolved file to: /tmp/output.txt' --add-dir /tmp --allowedTools 'Read(///tmp/**)' --allowedTools 'Edit(///tmp/**)' --allowedTools 'Write(///tmp/**)'"#]].assert_eq(&displayed.to_string());
     }
 }
 
