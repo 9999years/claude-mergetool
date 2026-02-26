@@ -130,11 +130,6 @@ impl MergeArgs {
             let dir_display = dir.display();
             tracing::debug!("Granting access to {dir_display}");
             command.arg("--add-dir").arg(*dir);
-            for tool in ["Read", "Edit", "Write"] {
-                command
-                    .arg("--allowedTools")
-                    .arg(format!("{tool}(//{dir_display}/**)"));
-            }
         }
 
         Ok(command)
@@ -202,7 +197,7 @@ mod tests {
             - Left (ours): /tmp/left.txt
             - Right (theirs): /tmp/right.txt
 
-            Write the resolved file to: /tmp/left.txt' --add-dir /tmp --allowedTools 'Read(///tmp/**)' --allowedTools 'Edit(///tmp/**)' --allowedTools 'Write(///tmp/**)'"#]].assert_eq(&displayed.to_string());
+            Write the resolved file to: /tmp/left.txt' --add-dir /tmp"#]].assert_eq(&displayed.to_string());
     }
 
     #[test]
@@ -231,7 +226,7 @@ mod tests {
             - Left (current): /tmp/left.txt
             - Right (incoming): /tmp/right.txt
 
-            Write the resolved file to: /tmp/output.txt' --add-dir /tmp --allowedTools 'Read(///tmp/**)' --allowedTools 'Edit(///tmp/**)' --allowedTools 'Write(///tmp/**)'"#]].assert_eq(&displayed.to_string());
+            Write the resolved file to: /tmp/output.txt' --add-dir /tmp"#]].assert_eq(&displayed.to_string());
     }
 }
 
