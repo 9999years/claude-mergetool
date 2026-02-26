@@ -22,6 +22,8 @@ It works surprisingly well, although I feel much more comfortable using it in `j
 
 ```sh
 cargo install claude-mergetool
+# or
+nix run github:9999years/claude-mergetool -- merge --help
 ```
 
 ### Prerequisites
