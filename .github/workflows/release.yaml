@@ -18,9 +18,6 @@ jobs:
   # This is a canonical hack to run GitHub Actions on merged PRs.
   # See: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#running-your-pull_request-workflow-when-a-pull-request-merges
   if_merged:
-    permissions:
-      issues: write
-      pull-requests: write
     name: Check that PR was merged and not closed
     if: github.event_name == 'workflow_dispatch'
       || (
@@ -36,6 +33,9 @@ jobs:
     name: Comment on PR with link to this run
     needs: if_merged
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - name: Comment on PR with link to this run
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
