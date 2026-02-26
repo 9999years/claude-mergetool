@@ -51,7 +51,7 @@ Add to `~/.config/git/config` (or `~/.gitconfig`):
 
 ```ini
 [mergetool "claude"]
-    cmd = claude-mergetool merge \"$BASE\" \"$LOCAL\" \"$REMOTE\" -o \"$MERGED\"
+    cmd = claude-mergetool merge "$BASE" "$LOCAL" "$REMOTE" -o "$MERGED"
     trustExitCode = true
 ```
 
