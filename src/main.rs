@@ -13,7 +13,8 @@ mod claude_json;
 #[derive(Parser)]
 #[command(
     name = "claude-mergetool",
-    about = "AI-powered merge conflict resolution"
+    about = "AI-powered merge conflict resolution",
+    version
 )]
 struct Cli {
     #[command(subcommand)]
