@@ -34,7 +34,7 @@ merge-args = ["merge", "$base", "$left", "$right", "-o", "$output", "-p", "$path
 Then resolve conflicts with:
 
 ```sh
-jj resolve -r <revision> --tool claude
+jj resolve -r REVSET --tool claude
 ```
 
 ### git
