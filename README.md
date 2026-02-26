@@ -42,18 +42,16 @@ jj resolve -r <revision> --tool claude
 Add to `~/.config/git/config` (or `~/.gitconfig`):
 
 ```ini
-[merge "claude-mergetool"]
-    name = claude-mergetool
-    driver = claude-mergetool merge --git %O %A %B -s %S -x %X -y %Y -p %P -l %L
+[mergetool "claude"]
+    cmd = claude-mergetool merge \"$BASE\" \"$LOCAL\" \"$REMOTE\" -o \"$MERGED\"
+    trustExitCode = true
 ```
 
-Then add a `.gitattributes` to your repo (or `~/.config/git/attributes` for global use):
+Then resolve conflicts with:
 
+```sh
+git mergetool -t claude
 ```
-* merge=claude-mergetool
-```
-
-Conflicts during `git merge`, `git rebase`, `git cherry-pick`, etc. will automatically launch Claude.
 
 ## Usage
 
@@ -66,7 +64,7 @@ claude-mergetool merge base.txt left.txt right.txt -o resolved.txt
 ### CLI reference
 
 ```
-claude-mergetool merge [OPTIONS] <BASE> <LEFT> <RIGHT>
+Usage: claude-mergetool merge [OPTIONS] <BASE> <LEFT> <RIGHT>
 
 Arguments:
   <BASE>   Base version (common ancestor)
@@ -74,13 +72,14 @@ Arguments:
   <RIGHT>  Right version (theirs / incoming)
 
 Options:
-      --git              Git merge driver mode (writes result to <LEFT>)
-  -o, --output <PATH>    Output file path (jj mode)
-  -s <LABEL>             Ancestor conflict label
-  -x <LABEL>             Left/ours conflict label [default: ours]
-  -y <LABEL>             Right/theirs conflict label [default: theirs]
-  -p <NAME>              Original file path (for display in prompts) [default: "unknown file"]
-  -l <SIZE>              Conflict marker size
+      --git              Git merge driver mode (writes result to `<left>` path)
+  -o, --output <OUTPUT>  Output file path (jj mode)
+  -s <ANCESTOR_LABEL>    Ancestor conflict label
+  -x <LEFT_LABEL>        Left/ours conflict label [default: ours]
+  -y <RIGHT_LABEL>       Right/theirs conflict label [default: theirs]
+  -p <FILEPATH>          Original file path [default: "unknown file"]
+  -l <MARKER_SIZE>       Conflict marker size
+  -h, --help             Print help
 ```
 
 ## How it works
