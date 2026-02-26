@@ -19,9 +19,10 @@ impl<'a> Display for RawClaudeEvent<'a> {
                 if let Some(content) = json["message"]["content"].as_array() {
                     for block in content {
                         if block["type"].as_str() == Some("text")
-                            && let Some(text) = block["text"].as_str() {
-                                write!(f, "{text}")?;
-                            }
+                            && let Some(text) = block["text"].as_str()
+                        {
+                            write!(f, "{text}")?;
+                        }
                     }
                 }
             }
