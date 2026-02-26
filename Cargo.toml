@@ -24,3 +24,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 expect-test = "1.5.1"
+tempfile = "3"
+utf8-command = "1.0.1"
