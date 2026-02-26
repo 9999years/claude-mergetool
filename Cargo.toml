@@ -2,6 +2,17 @@
 name = "claude-mergetool"
 version = "0.1.0"
 edition = "2024"
+authors = ["Rebecca Turner <rbt@sent.as>"]
+description = "AI-powered merge conflict resolution using Claude Code"
+repository = "https://github.com/9999years/claude-mergetool"
+license = "MIT"
+keywords = ["git", "merge", "claude", "ai"]
+categories = ["command-line-utilities"]
+
+[package.metadata.release]
+tag = false
+push = false
+publish = false
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
