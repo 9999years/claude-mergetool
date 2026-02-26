@@ -6,7 +6,8 @@ pub struct RawClaudeEvent<'a>(pub &'a str);
 
 impl<'a> Display for RawClaudeEvent<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let json: Value = match serde_json::from_str(self.0) {
+        let event = self.0;
+        let json: Value = match serde_json::from_str(event) {
             Ok(v) => v,
             Err(_) => {
                 return Ok(());
@@ -39,7 +40,9 @@ impl<'a> Display for RawClaudeEvent<'a> {
                     }
                 }
             }
-            _ => {}
+            _ => {
+                tracing::debug!(%event, "Skipping Claude event");
+            }
         }
 
         Ok(())
