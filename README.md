@@ -80,7 +80,7 @@ Arguments:
   <RIGHT>  Right version (theirs / incoming)
 
 Options:
-      --git              Git merge driver mode (writes result to `<left>` path)
+      --git-merge-driver  Git merge driver mode (writes result to `<left>` path)
   -o, --output <OUTPUT>  Output file path (jj mode)
   -s <ANCESTOR_LABEL>    Ancestor conflict label
   -x <LEFT_LABEL>        Left/ours conflict label [default: ours]
