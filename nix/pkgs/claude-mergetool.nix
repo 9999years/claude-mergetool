@@ -32,7 +32,7 @@ in
 rustPlatform.buildRustPackage {
   inherit pname version src;
 
-  cargoHash = "sha256-WSKG1emAhOSkuggqztk5v+dQOto/2eabWRSYNNSEPbk=";
+  cargoLock.lockFile = ../../Cargo.lock;
 
   doInstallCheck = true;
   nativeInstallCheckInputs = [ versionCheckHook ];
