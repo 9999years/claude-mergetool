@@ -105,6 +105,8 @@ fn resolve_merge_conflict() {
 
     // Configure git to use our built binary as a mergetool.
     let bin = env!("CARGO_BIN_EXE_claude-mergetool");
+    // TODO: Use claude-mergetool's `install` command but set env vars so it doesn't write the
+    // user's config.
     let tool_cmd = format!(r#"{bin} merge "$BASE" "$LOCAL" "$REMOTE" -o "$MERGED" -p "$MERGED""#);
     git_ok(repo, &["config", "mergetool.claude.cmd", &tool_cmd]);
     git_ok(repo, &["config", "mergetool.claude.trustExitCode", "true"]);

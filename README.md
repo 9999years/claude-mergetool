@@ -32,7 +32,20 @@ nix run github:9999years/claude-mergetool -- merge --help
 
 ## Setup
 
-### jj
+You can configure `claude-mergetool` automatically:
+
+```
+claude-mergetool install
+```
+
+Then, you can use `git mergetool -t claude` to resolve conflicts with Git or `jj resolve --tool claude` to resolve conflicts with JJ.
+
+To configure `claude-mergetool` only for one program or the other, use (e.g.) `claude-mergetool install jj`.
+
+<details>
+<summary><h3>Configuration details</h3></summary>
+
+#### jj
 
 Add to `~/.config/jj/config.toml`:
 
@@ -48,7 +61,7 @@ Then resolve conflicts with:
 jj resolve -r REVSET --tool claude
 ```
 
-### git
+#### git
 
 Add to `~/.config/git/config` (or `~/.gitconfig`):
 
@@ -63,6 +76,8 @@ Then resolve conflicts with:
 ```sh
 git mergetool -t claude
 ```
+
+</details>
 
 ## Usage
 
