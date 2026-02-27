@@ -201,10 +201,22 @@ impl Display for ClaudeSuccess {
             f,
             "{}",
             format!(
-                "Finished in {} ({} API time). Total cost: {}",
+                "Finished in {} ({} API time). Total cost: {} (Salary: {}/yr)",
                 HumanTime(self.duration),
                 HumanTime(self.api_duration),
                 Dollars(self.total_cost_usd),
+                Dollars(
+                    // expect: $28,654.08/yr
+                    // (duration / 1hr)
+                    // (cost / (duration / 1hr)) * (hours_per_year) -> dollars
+                    (self.total_cost_usd
+                        / (self.duration.div_duration_f64(Duration::from_hours(1))))
+                        * {
+                            const WORKING_HOURS_PER_WEEK: f64 = 40.0;
+                            const WORKING_WEEKS_PER_YEAR: f64 = 50.0; // 2 weeks vacation!
+                            WORKING_HOURS_PER_WEEK * WORKING_WEEKS_PER_YEAR
+                        }
+                ),
             )
             .green()
             .bold()
@@ -261,7 +273,11 @@ struct Dollars(f64);
 
 impl Display for Dollars {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "${:.4}", self.0)
+        if self.0 < 1_000.0 {
+            write!(f, "${:.4}", self.0)
+        } else {
+            write!(f, "${:.1}k", self.0 / 1_000.0)
+        }
     }
 }
 
