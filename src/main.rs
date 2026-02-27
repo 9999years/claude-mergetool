@@ -13,6 +13,7 @@ use tracing::level_filters::LevelFilter;
 
 mod claude_json;
 mod install;
+mod logging;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -171,12 +172,18 @@ impl MergeArgs {
         let reader = BufReader::new(stdout);
 
         let writer = claude_json::ClaudeEventWriter::new()?;
+        let mut logger = logging::MergeLogger::new(self.filepath.as_deref());
 
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    write!(std::io::stderr().lock(), "{}", writer.display(&line))
-                        .into_diagnostic()?;
+                    logger.log_event(&line);
+                    if let Some(event) = writer.display(&line) {
+                        if event.is_result() {
+                            logger.log_summary(&line);
+                        }
+                        write!(std::io::stderr().lock(), "{event}").into_diagnostic()?;
+                    }
                 }
                 Err(err) => {
                     tracing::debug!("{err}");
