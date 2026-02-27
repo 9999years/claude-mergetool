@@ -6,6 +6,7 @@ use command_error::Utf8ProgramAndArgs;
 use miette::Context;
 use miette::IntoDiagnostic;
 use miette::miette;
+use owo_colors::OwoColorize;
 use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::io::Write;
@@ -183,8 +184,8 @@ struct MergeArgs {
     right_label: String,
 
     /// Original file path
-    #[arg(short = 'p', default_value = "unknown file")]
-    filepath: String,
+    #[arg(short = 'p')]
+    filepath: Option<String>,
 
     /// Conflict marker size
     #[arg(short = 'l')]
@@ -202,7 +203,20 @@ impl MergeArgs {
         }
     }
 
+    fn filepath(&self) -> &str {
+        self.filepath.as_deref().unwrap_or("unknown file")
+    }
+
     fn command(&self) -> miette::Result<Command> {
+        if let Some(filepath) = &self.filepath {
+            eprintln!(
+                "{}",
+                format!("Resolving merge conflict in {}", filepath.underline())
+                    .bold()
+                    .green()
+            );
+        }
+
         let system_prompt = format!(
             "You are resolving a merge conflict in `{}`. \
              Your working directory is the root of the repository, so you can browse and edit \
@@ -213,7 +227,9 @@ impl MergeArgs {
              and write a resolved version to the output path. \
              If changes are compatible, merge them cleanly. \
              If they genuinely conflict, use your best judgment and explain your reasoning.",
-            self.filepath, self.left_label, self.right_label,
+            self.filepath(),
+            self.left_label,
+            self.right_label,
         );
 
         let user_prompt = format!(
@@ -223,7 +239,7 @@ impl MergeArgs {
              - Left ({}): {}\n\
              - Right ({}): {}\n\n\
              Write the resolved file to: {}",
-            self.filepath,
+            self.filepath(),
             self.base.display(),
             self.left_label,
             self.left.display(),
@@ -276,15 +292,14 @@ impl MergeArgs {
             .take()
             .expect("claude piped stdout should have a stdout field");
         let reader = BufReader::new(stdout);
+
+        let writer = claude_json::ClaudeEventWriter::new()?;
+
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    write!(
-                        std::io::stderr().lock(),
-                        "{}",
-                        claude_json::RawClaudeEvent(&line)
-                    )
-                    .into_diagnostic()?;
+                    write!(std::io::stderr().lock(), "{}", writer.display(&line))
+                        .into_diagnostic()?;
                 }
                 Err(err) => {
                     tracing::debug!("{err}");
@@ -315,7 +330,7 @@ mod tests {
             ancestor_label: None,
             left_label: "ours".to_string(),
             right_label: "theirs".to_string(),
-            filepath: "src/lib.rs".to_string(),
+            filepath: Some("src/lib.rs".to_string()),
             marker_size: None,
         };
         let command = args.command().unwrap();
@@ -344,7 +359,7 @@ mod tests {
             ancestor_label: Some("ancestor".to_string()),
             left_label: "current".to_string(),
             right_label: "incoming".to_string(),
-            filepath: "README.md".to_string(),
+            filepath: Some("README.md".to_string()),
             marker_size: Some(7),
         };
         let command = args.command().unwrap();
