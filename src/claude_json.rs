@@ -1,5 +1,6 @@
 use owo_colors::OwoColorize;
 use serde::Deserialize;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
@@ -38,38 +39,40 @@ impl ClaudeEventWriter {
         })
     }
 
-    pub fn display<'a>(&'a self, event: &'a str) -> impl Display + 'a {
-        RawClaudeEvent {
-            event,
-            temp_dirs: &self.temp_dirs,
-            has_output: &self.has_output,
+    pub fn display(&self, event: &str) -> Option<DisplayableEvent<'_>> {
+        match serde_json::from_str::<ClaudeEvent>(event) {
+            Ok(parsed) => Some(DisplayableEvent {
+                parsed,
+                temp_dirs: &self.temp_dirs,
+                has_output: &self.has_output,
+            }),
+            Err(_) => {
+                tracing::debug!(event = %event, "Skipping Claude event");
+                None
+            }
         }
     }
 }
 
-/// Wrapper which displays a raw Claude JSON line when formatted.
-struct RawClaudeEvent<'a> {
-    event: &'a str,
+pub struct DisplayableEvent<'a> {
+    parsed: ClaudeEvent,
     temp_dirs: &'a [String],
     has_output: &'a AtomicBool,
 }
 
-impl<'a> Display for RawClaudeEvent<'a> {
+impl DisplayableEvent<'_> {
+    pub fn is_result(&self) -> bool {
+        matches!(self.parsed, ClaudeEvent::Result { .. })
+    }
+}
+
+impl Display for DisplayableEvent<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match serde_json::from_str::<ClaudeEvent>(self.event) {
-            Ok(event) => {
-                let formatted = event.display(self.has_output).to_string();
-                let result = self
-                    .temp_dirs
-                    .iter()
-                    .fold(formatted, |s, dir| s.replace(dir.as_str(), "$TMPDIR"));
-                write!(f, "{result}")
-            }
-            Err(_) => {
-                tracing::debug!(event = %self.event, "Skipping Claude event");
-                Ok(())
-            }
-        }
+        write!(
+            f,
+            "{}",
+            self.parsed.display(self.has_output, self.temp_dirs)
+        )
     }
 }
 
@@ -86,10 +89,15 @@ enum ClaudeEvent {
 }
 
 impl ClaudeEvent {
-    fn display<'a>(&'a self, has_output: &'a AtomicBool) -> ClaudeEventDisplay<'a> {
+    fn display<'a>(
+        &'a self,
+        has_output: &'a AtomicBool,
+        temp_dirs: &'a [String],
+    ) -> ClaudeEventDisplay<'a> {
         ClaudeEventDisplay {
             event: self,
             has_output,
+            temp_dirs,
         }
     }
 }
@@ -97,6 +105,19 @@ impl ClaudeEvent {
 struct ClaudeEventDisplay<'a> {
     event: &'a ClaudeEvent,
     has_output: &'a AtomicBool,
+    temp_dirs: &'a [String],
+}
+
+impl ClaudeEventDisplay<'_> {
+    fn scrub<'s>(&self, s: &'s str) -> Cow<'s, str> {
+        let mut result = Cow::Borrowed(s);
+        for dir in self.temp_dirs {
+            if matches!(result, Cow::Owned(_)) || result.contains(dir.as_str()) {
+                result = Cow::Owned(result.replace(dir.as_str(), "$TMPDIR"));
+            }
+        }
+        result
+    }
 }
 
 impl Display for ClaudeEventDisplay<'_> {
@@ -112,14 +133,16 @@ impl Display for ClaudeEventDisplay<'_> {
                                 text.trim_start_matches('\n')
                             };
                             if !text.is_empty() {
-                                write!(f, "{}", termimad::term_text(text))?;
+                                let text = self.scrub(text);
+                                write!(f, "{}", termimad::term_text(&text))?;
                                 self.has_output.store(true, Relaxed);
                             }
                         }
                         ContentBlock::ToolUse { name, input } => {
                             match name.as_str() {
                                 "Read" | "Write" | "Edit" => {
-                                    let path = input.file_path.as_deref().unwrap_or("?");
+                                    let path =
+                                        self.scrub(input.file_path.as_deref().unwrap_or("?"));
                                     writeln!(f, "{}", format!("> {name} {path}").dimmed())?;
                                 }
                                 _ => {
@@ -310,5 +333,39 @@ impl Display for HumanTime {
         } else {
             write!(f, "{}", humantime::format_duration(duration))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_result_event_true() {
+        let writer = ClaudeEventWriter {
+            temp_dirs: vec![],
+            has_output: AtomicBool::new(false),
+        };
+        let line = r#"{"type":"result","subtype":"success","is_error":false,"duration_ms":30093,"duration_api_ms":30038,"num_turns":7,"result":"done","total_cost_usd":0.113,"usage":{"input_tokens":7,"cache_creation_input_tokens":3972,"cache_read_input_tokens":104455,"output_tokens":1451},"modelUsage":{}}"#;
+        assert!(writer.display(line).unwrap().is_result());
+    }
+
+    #[test]
+    fn is_result_event_false_assistant() {
+        let writer = ClaudeEventWriter {
+            temp_dirs: vec![],
+            has_output: AtomicBool::new(false),
+        };
+        let line = r#"{"type":"assistant","message":{"model":"claude-opus-4-6","id":"msg_01","type":"message","role":"assistant","content":[{"type":"text","text":"hello"}]}}"#;
+        assert!(!writer.display(line).unwrap().is_result());
+    }
+
+    #[test]
+    fn is_result_event_false_invalid_json() {
+        let writer = ClaudeEventWriter {
+            temp_dirs: vec![],
+            has_output: AtomicBool::new(false),
+        };
+        assert!(writer.display("not json at all").is_none());
     }
 }

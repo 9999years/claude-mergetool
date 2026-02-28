@@ -17,7 +17,9 @@ publish = false
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 command-error = { version = "0.8.0", features = ["miette", "tracing"] }
+dirs = "6"
 humantime = "2.3.0"
+jiff = "0.2"
 miette = { version = "7.6.0", features = ["fancy"] }
 owo-colors = { version = "4.3.0", features = ["supports-colors"] }
 serde = { version = "1.0.228", features = ["derive"] }
