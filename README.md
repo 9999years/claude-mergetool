@@ -80,6 +80,26 @@ git mergetool -t claude
 
 </details>
 
+## Configuration
+
+`claude-mergetool` can be configured via a TOML config file at `~/.config/claude-mergetool/config.toml`. You can override the path with the `--config` global flag.
+
+To bootstrap a default config file with all options documented:
+
+```sh
+claude-mergetool generate-config
+```
+
+Use `--output <path>` to write to a custom location, or `--force` to overwrite an existing file.
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `permission_mode` | string | `"acceptEdits"` | Override the `--permission-mode` flag passed to `claude`. |
+| `extra_args` | array of strings | `[]` | Additional CLI arguments passed to `claude` (e.g. `["--model", "opus"]`). |
+| `extra_system_prompt` | string | `""` | Text appended to the default system prompt. |
+
 ## Usage
 
 claude-mergetool is normally invoked by git or jj, but you can also run it directly:
