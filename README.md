@@ -3,6 +3,10 @@
 <a href="https://crates.io/crates/claude-mergetool">
 <img src="https://img.shields.io/crates/v/claude-mergetool" alt="Crates.io">
 </a>
+<br>
+<a href="https://repology.org/project/claude-mergetool/versions">
+<img src="https://repology.org/badge/vertical-allrepos/claude-mergetool.svg?header=" alt="Packaging status">
+</a>
 
 Have you ever wished that resolving Git merge conflicts could cost you
 real-world dollars? Now it can!
