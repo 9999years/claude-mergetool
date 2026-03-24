@@ -142,11 +142,51 @@ impl Display for ClaudeEventDisplay<'_> {
                             match name.as_str() {
                                 "Read" | "Write" | "Edit" => {
                                     let path =
-                                        self.scrub(input.file_path.as_deref().unwrap_or("?"));
-                                    writeln!(f, "{}", format!("> {name} {path}").dimmed())?;
+                                        self.scrub(input.file_path.as_deref().unwrap_or_default());
+                                    let suffix = match (input.offset, input.limit) {
+                                        (None, None) => "".into(),
+                                        (None, Some(limit)) => format!("up to {limit} lines"),
+                                        (Some(offset), None) => format!("lines {offset}-..."),
+                                        (Some(offset), Some(limit)) => {
+                                            format!("lines {offset}-{}", offset + limit)
+                                        }
+                                    };
+                                    writeln!(f, "{}", format!("> {name} {path}{suffix}").bold())?;
+                                }
+                                "Grep" => {
+                                    let path =
+                                        self.scrub(input.file_path.as_deref().unwrap_or_default());
+
+                                    let mode = match input.output_mode.as_deref() {
+                                        Some(mode) => format!(" [{mode}]"),
+                                        None => "".into(),
+                                    };
+
+                                    let pattern = input.pattern.as_deref().unwrap_or_default();
+
+                                    writeln!(
+                                        f,
+                                        "{}\n       {}",
+                                        format!("> {name}{mode} {path}").bold(),
+                                        pattern.dimmed(),
+                                    )?;
+                                }
+                                "Bash" => {
+                                    let description =
+                                        input.description.as_deref().unwrap_or_default();
+                                    let command =
+                                        self.scrub(input.command.as_deref().unwrap_or_default());
+                                    writeln!(
+                                        f,
+                                        "{}\n{}",
+                                        format!("> {name}: {description}").bold(),
+                                        format!("$ {command}").dimmed(),
+                                    )?;
                                 }
                                 _ => {
-                                    writeln!(f, "> {name}")?;
+                                    let description =
+                                        input.description.as_deref().unwrap_or_default();
+                                    writeln!(f, "{}", format!("> {name} {description}").dimmed())?;
                                 }
                             }
                             self.has_output.store(true, Relaxed);
@@ -189,7 +229,16 @@ enum ContentBlock {
 
 #[derive(Default, Deserialize)]
 struct ToolInput {
+    #[serde(alias = "path")]
     file_path: Option<String>,
+    offset: Option<usize>,
+    limit: Option<usize>,
+
+    command: Option<String>,
+    description: Option<String>,
+
+    pattern: Option<String>,
+    output_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
