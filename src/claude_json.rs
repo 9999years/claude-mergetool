@@ -113,7 +113,12 @@ impl ClaudeEventDisplay<'_> {
         let mut result = Cow::Borrowed(s);
         for dir in self.temp_dirs {
             if matches!(result, Cow::Owned(_)) || result.contains(dir.as_str()) {
-                result = Cow::Owned(result.replace(dir.as_str(), "$TMPDIR"));
+                let replace = if dir.as_str().ends_with(std::path::MAIN_SEPARATOR) {
+                    "$TMPDIR/"
+                } else {
+                    "$TMPDIR"
+                };
+                result = Cow::Owned(result.replace(dir.as_str(), replace));
             }
         }
         result
