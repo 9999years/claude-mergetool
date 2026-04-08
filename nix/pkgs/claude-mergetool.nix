@@ -18,6 +18,7 @@ let
       # Note: May eventually want to include `README.md` for help output?
       ../../Cargo.toml
       ../../Cargo.lock
+      ../../config.toml
       (intersection (fileFilter ({ hasExt, ... }: hasExt "rs") root) (unions [
         ../../src
         ../../tests

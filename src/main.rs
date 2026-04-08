@@ -12,6 +12,7 @@ use std::process::{Command, Stdio};
 use tracing::level_filters::LevelFilter;
 
 mod claude_json;
+mod config;
 mod install;
 mod logging;
 
@@ -22,6 +23,10 @@ mod logging;
     version
 )]
 struct Cli {
+    /// Path to a TOML config file. Defaults to the platform config directory.
+    #[arg(long, global = true)]
+    config: Option<PathBuf>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -32,6 +37,8 @@ enum Commands {
     Merge(MergeArgs),
     /// Install `claude-mergetool` as a merge tool for Git or jj.
     Install(install::InstallArgs),
+    /// Generate a default configuration file.
+    GenerateConfig(config::GenerateConfigArgs),
 }
 
 #[derive(clap::Args, Debug)]
@@ -85,7 +92,7 @@ impl MergeArgs {
         self.filepath.as_deref().unwrap_or("unknown file")
     }
 
-    fn command(&self) -> miette::Result<Command> {
+    fn command(&self, config: &config::Config) -> miette::Result<Command> {
         if let Some(filepath) = &self.filepath {
             eprintln!(
                 "{}",
@@ -95,7 +102,7 @@ impl MergeArgs {
             );
         }
 
-        let system_prompt = format!(
+        let mut system_prompt = format!(
             "You are resolving a merge conflict in `{}`. \
              Your working directory is the root of the repository, so you can browse and edit \
              other files if needed (e.g. if code moved between files).\n\n\
@@ -109,6 +116,8 @@ impl MergeArgs {
             self.left_label,
             self.right_label,
         );
+
+        config.append_system_prompt(&mut system_prompt);
 
         let user_prompt = format!(
             "Resolve the merge conflict in `{}`.\n\n\
@@ -138,13 +147,15 @@ impl MergeArgs {
         .filter_map(|p| p.parent().filter(|p| *p != ""))
         .collect();
 
+        let permission_mode = config.permission_mode();
+
         let mut command = Command::new("claude");
 
         command
             .arg("--print")
             .arg("--verbose")
             .arg("--output-format=stream-json")
-            .arg("--permission-mode=acceptEdits")
+            .arg(format!("--permission-mode={permission_mode}"))
             .arg("--append-system-prompt")
             .arg(&system_prompt)
             .arg(user_prompt)
@@ -157,13 +168,17 @@ impl MergeArgs {
             command.arg("--add-dir").arg(*dir);
         }
 
+        for arg in config.extra_args() {
+            command.arg(arg);
+        }
+
         tracing::debug!("Claude command: {}", Utf8ProgramAndArgs::from(&command));
 
         Ok(command)
     }
 
-    fn run(&self) -> miette::Result<()> {
-        let mut child = self.command()?.spawn_checked()?;
+    fn run(&self, config: &config::Config) -> miette::Result<()> {
+        let mut child = self.command(config)?.spawn_checked()?;
         let stdout = child
             .child_mut()
             .stdout
@@ -217,7 +232,8 @@ mod tests {
             filepath: Some("src/lib.rs".to_string()),
             marker_size: None,
         };
-        let command = args.command().unwrap();
+        let config = config::Config::default();
+        let command = args.command(&config).unwrap();
         let displayed: Utf8ProgramAndArgs = (&command).into();
         expect![[r#"
             claude --print --verbose '--output-format=stream-json' '--permission-mode=acceptEdits' --append-system-prompt 'You are resolving a merge conflict in `src/lib.rs`. Your working directory is the root of the repository, so you can browse and edit other files if needed (e.g. if code moved between files).
@@ -246,7 +262,8 @@ mod tests {
             filepath: Some("README.md".to_string()),
             marker_size: Some(7),
         };
-        let command = args.command().unwrap();
+        let config = config::Config::default();
+        let command = args.command(&config).unwrap();
         let displayed: Utf8ProgramAndArgs = (&command).into();
         expect![[r#"
             claude --print --verbose '--output-format=stream-json' '--permission-mode=acceptEdits' --append-system-prompt 'You are resolving a merge conflict in `README.md`. Your working directory is the root of the repository, so you can browse and edit other files if needed (e.g. if code moved between files).
@@ -259,6 +276,42 @@ mod tests {
             - Right (incoming): /tmp/right.txt
 
             Write the resolved file to: /tmp/output.txt' --add-dir /tmp"#]].assert_eq(&displayed.to_string());
+    }
+
+    #[test]
+    fn command_with_config_overrides() {
+        let args = MergeArgs {
+            git_merge_driver: true,
+            base: PathBuf::from("/tmp/base.txt"),
+            left: PathBuf::from("/tmp/left.txt"),
+            right: PathBuf::from("/tmp/right.txt"),
+            output: None,
+            ancestor_label: None,
+            left_label: "ours".to_string(),
+            right_label: "theirs".to_string(),
+            filepath: Some("src/lib.rs".to_string()),
+            marker_size: None,
+        };
+        let config = config::Config {
+            permission_mode: Some("plan".to_string()),
+            extra_args: Some(vec!["--model".to_string(), "opus".to_string()]),
+            extra_system_prompt: Some("Be concise.".to_string()),
+        };
+        let command = args.command(&config).unwrap();
+        let displayed: Utf8ProgramAndArgs = (&command).into();
+        expect![[r#"
+            claude --print --verbose '--output-format=stream-json' '--permission-mode=plan' --append-system-prompt 'You are resolving a merge conflict in `src/lib.rs`. Your working directory is the root of the repository, so you can browse and edit other files if needed (e.g. if code moved between files).
+
+            Three versions of the file are provided as temporary files: the base (common ancestor), left (ours), and right (theirs). Read all three, understand what each side changed relative to the base, and write a resolved version to the output path. If changes are compatible, merge them cleanly. If they genuinely conflict, use your best judgment and explain your reasoning.
+
+            Be concise.' 'Resolve the merge conflict in `src/lib.rs`.
+
+            Read these three versions of the file:
+            - Base (common ancestor): /tmp/base.txt
+            - Left (ours): /tmp/left.txt
+            - Right (theirs): /tmp/right.txt
+
+            Write the resolved file to: /tmp/left.txt' --add-dir /tmp --model opus"#]].assert_eq(&displayed.to_string());
     }
 }
 
@@ -277,9 +330,13 @@ fn main() -> miette::Result<()> {
 
     tracing::debug!("Parsed arguments:{cli:#?}");
 
+    let config = config::load_config(cli.config.as_deref())?;
+    tracing::debug!("Loaded config: {config:#?}");
+
     match cli.command {
-        Commands::Merge(args) => args.run()?,
+        Commands::Merge(args) => args.run(&config)?,
         Commands::Install(install) => install.run()?,
+        Commands::GenerateConfig(args) => args.run()?,
     }
 
     Ok(())

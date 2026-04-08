@@ -1,0 +1,13 @@
+# claude-mergetool configuration
+# See: https://github.com/9999years/claude-mergetool#configuration
+
+# Override the --permission-mode flag passed to `claude`.
+# Default: "acceptEdits"
+# permission_mode = "acceptEdits"
+
+# Additional CLI arguments passed to `claude`.
+# Example: ["--model", "opus"]
+# extra_args = []
+
+# Text appended to the default system prompt.
+# extra_system_prompt = ""
